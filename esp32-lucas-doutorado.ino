@@ -7,9 +7,11 @@
 #include <Arduino.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <ESP_Google_Sheet_Client.h>
 
-RTC_DATA_ATTR uint32_t bootCount = 0;
+// 96 because that's how many aattempts are possible in a single day
+RTC_DATA_ATTR rtc_store_t rtc_data[96];
+RTC_DATA_ATTR uint32_t failed_transmissions = 0;
+RTC_DATA_ATTR uint32_t boot_count = 0;
 
 // Init Sensors
 OneWire oneWire(TEMP_SENSORS_BUS);
@@ -31,7 +33,7 @@ void setup() {
 	sensors.begin();
 
 	// Define wake up source, Timer with TIME_TO_SLEEP duration
-	bootCount++;
+	boot_count++;
 	esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
 	Serial.println("Setup ESP32 to sleep for every " + String(TIME_TO_SLEEP) + " Seconds");
 
@@ -41,48 +43,34 @@ void setup() {
 
 	// Request temperatures
 	sensors.requestTemperatures();
-	float in_house = getTemperature(IN_HOUSE_SENSOR);
-	float out_house = getTemperature(OUT_HOUSE_SENSOR);
-	float ref_house = getTemperature(REF_HOUSE_SENSOR);
-	time_t timestamp = getTime();
+
+	rtc_store_t readings = {
+		boot_count,
+		getTime(),
+		getTemperature(sensors, IN_HOUSE_SENSOR),
+		getTemperature(sensors, OUT_HOUSE_SENSOR),
+		getTemperature(sensors, REF_HOUSE_SENSOR)
+	};
 
 	if (wifi_status == WL_CONNECTED) {
-		GSheet.begin(CLIENT_EMAIL, PROJECT_ID, PRIVATE_KEY);
-
-		Serial.print("Starting Google Sheets connection");
-		while (!GSheet.ready()) {
+		// Try to resend readings
+		uint32_t f = failed_transmissions - 1;
+		while(failed_transmissions > 0) {
+			Serial.print("Sending reading n# ");
+			Serial.println(f - failed_transmissions);
+			failed_transmissions--;
+			bool success = sendReadings(rtc_data[f - failed_transmissions]);
 			delay(500);
-			Serial.print(".");
 		}
-		Serial.println("Connected!");
-
-		FirebaseJson response;
-		FirebaseJson valueRange;
-
-		// Define organization Column-wise
-		valueRange.add("majorDimension", "COLUMNS");
-		valueRange.set("values/[0]/[0]", bootCount);
-		valueRange.set("values/[1]/[0]", timestamp);
-		valueRange.set("values/[2]/[0]", in_house);
-		valueRange.set("values/[3]/[0]", out_house);
-		valueRange.set("values/[4]/[0]", ref_house);
-
-		bool success = GSheet.values.append(
-		  &response,                 // returned response
-		  SPREADSHEET_ID,            // spreadsheet Id to append
-		  String(HOSTNAME) + "!A1",  // range to append
-		  &valueRange                // data range to append
-		);
-
-		if (success) {
-			response.toString(Serial, true);
-			valueRange.clear();
-		} else {
-			Serial.println(GSheet.errorReason());
-		}
-
-		Serial.println();
-		Serial.println(ESP.getFreeHeap());
+		// Send current readings
+		bool success = sendReadings(readings);
+	} else {
+		// Store failed readings in memory
+		Serial.print("Saving reading n# ");
+		Serial.println(failed_transmissions);
+		rtc_data[failed_transmissions] = readings;
+		failed_transmissions++;
+		failed_transmissions = failed_transmissions % 96;
 	}
 
 	// LED indicator
@@ -96,17 +84,4 @@ void setup() {
 
 void loop() {
 	// Not called
-}
-
-float getTemperature(DeviceAddress deviceAddress) {
-	float tempC = sensors.getTempC(deviceAddress);
-
-	if (tempC == DEVICE_DISCONNECTED_C) {
-		Serial.println("ERROR: Could not read temperature data");
-		return -127.0;
-	}
-
-	Serial.print(tempC);
-	Serial.println("°C");
-	return tempC;
 }
