@@ -11,13 +11,22 @@
 #include <DallasTemperature.h>
 #include <ESP_Google_Sheet_Client.h>
 
-// 32 bytes in size
 typedef struct {
   uint32_t boot_count;
   time_t timestamp;
-  float in_temp;
-  float out_temp;
-  float ref_temp;
+  float red_straight;
+  float blue_straight;
+  float green_straight;
+  float red_tri;
+  float blue_tri;
+  float green_tri;
+  float red_outset;
+  float blue_outset;
+  float green_outset;
+  float red_inset;
+  float blue_inset;
+  float green_inset;
+  float yellow_out;
 } rtc_store_t;
 
 

@@ -30,9 +30,20 @@ bool sendReadings(rtc_store_t readings) {
 	valueRange.add("majorDimension", "COLUMNS");
 	valueRange.set("values/[0]/[0]", readings.boot_count);
 	valueRange.set("values/[1]/[0]", readings.timestamp);
-	valueRange.set("values/[2]/[0]", readings.in_temp);
-	valueRange.set("values/[3]/[0]", readings.out_temp);
-	valueRange.set("values/[4]/[0]", readings.ref_temp);
+	valueRange.set("values/[2]/[0]", readings.red_straight);
+	valueRange.set("values/[3]/[0]", readings.blue_straight);
+	valueRange.set("values/[4]/[0]", readings.green_straight);
+	valueRange.set("values/[5]/[0]", readings.red_tri);
+	valueRange.set("values/[6]/[0]", readings.blue_tri);
+	valueRange.set("values/[7]/[0]", readings.green_tri);
+	valueRange.set("values/[8]/[0]", readings.red_outset);
+	valueRange.set("values/[9]/[0]", readings.blue_outset);
+	valueRange.set("values/[10]/[0]", readings.green_outset);
+	valueRange.set("values/[11]/[0]", readings.red_inset);
+	valueRange.set("values/[12]/[0]", readings.blue_inset);
+	valueRange.set("values/[13]/[0]", readings.green_inset);
+	valueRange.set("values/[14]/[0]", readings.yellow_out);
+
 
 	bool success = GSheet.values.append(
 		&response,                 // returned response
