@@ -76,14 +76,19 @@ time_t getTime() {
 }
 
 wl_status_t connectWiFi() {
+	WiFiMulti wifi_multi;
+
 	WiFi.setHostname(HOSTNAME);
 	WiFi.mode(WIFI_STA);
-	WiFi.begin(SSID, PWD);
+
+	wifi_multi.addAP(SSID1, PWD1);
+	wifi_multi.addAP(SSID2, PWD2);
+	wifi_multi.addAP(SSID3, PWD3);
 
 	uint8_t retry_attempt = 0;
 	Serial.print("Connecting to WiFi");
-	// TODO: Try limited number of times
-	while (WiFi.status() != WL_CONNECTED && retry_attempt <= 10) {
+	// Try limited number of times
+	while (wifi_multi.run() != WL_CONNECTED && retry_attempt <= 10) {
 		delay(500);
 		retry_attempt++;
 		Serial.print(".");

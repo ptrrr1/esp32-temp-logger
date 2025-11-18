@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <WiFi.h>
+#include <WiFiMulti.h>
 #include <DallasTemperature.h>
 #include <ESP_Google_Sheet_Client.h>
 
